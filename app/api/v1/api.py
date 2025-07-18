@@ -1,19 +1,10 @@
 from fastapi import APIRouter
-
-from app.api.v1.endpoints import resume, job_description, jobs, applicants
+from app.api.v1.endpoints import resume, job_description, jobs, applicants, advanced_resume
 
 api_router = APIRouter()
 
-# Core parsing endpoints
 api_router.include_router(resume.router, prefix="/resume", tags=["resume"])
-api_router.include_router(job_description.router, prefix="/job", tags=["job-description"])
-
-# Comprehensive job management endpoints
-api_router.include_router(jobs.router, tags=["jobs"])
-
-# Comprehensive applicant management endpoints
-api_router.include_router(applicants.router, tags=["applicants"])
-
-# Matching and email endpoints are disabled for now
-# api_router.include_router(matching.router, prefix="/matching", tags=["matching"])
-# api_router.include_router(email.router, prefix="/email", tags=["email"])
+api_router.include_router(job_description.router, prefix="/job-description", tags=["job-description"])
+api_router.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
+api_router.include_router(applicants.router, prefix="/applicants", tags=["applicants"])
+api_router.include_router(advanced_resume.router, prefix="/advanced", tags=["advanced"])
