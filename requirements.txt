@@ -1,0 +1,30 @@
+# Core Framework
+fastapi
+uvicorn
+pydantic
+
+# AI/ML - Using external APIs only (Groq + Mistral)
+groq
+
+# Database
+pymilvus
+psycopg2-binary
+
+# File Processing
+PyPDF2
+python-docx
+python-multipart
+
+# Utilities
+python-dotenv
+requests
+httpx
+
+# Data Processing (lightweight)
+numpy
+Pillow
+pydantic_settings
+
+
+pytesseract
+pymupdf

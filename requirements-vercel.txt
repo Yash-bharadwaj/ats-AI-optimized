@@ -1,0 +1,30 @@
+# Core Framework - Minimal FastAPI setup
+fastapi==0.110.1
+uvicorn==0.25.0
+pydantic==2.11.4
+pydantic-settings==2.10.1
+
+# AI/ML - External APIs only
+groq==0.30.0
+
+# Database - Only Milvus (PostgreSQL removed for Vercel)
+pymilvus==2.5.13
+
+# File Processing - Lightweight alternatives
+PyPDF2==3.0.1
+python-docx==1.2.0
+python-multipart==0.0.20
+
+# Utilities - Essential only
+python-dotenv==1.1.0
+requests==2.32.3
+httpx==0.28.1
+
+# Data Processing - Minimal
+numpy==2.1.2
+
+# Remove heavy dependencies for Vercel
+# Pillow - replaced with lightweight alternatives
+# pytesseract - removed (OCR not needed for Vercel)
+# pymupdf - replaced with PyPDF2
+# psycopg2-binary - removed (PostgreSQL not used) 
