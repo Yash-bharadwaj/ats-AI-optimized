@@ -84,7 +84,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 # For Vercel deployment - this is the main handler
-from mangum import Adapter
+from mangum import Mangum
 
 # Create the ASGI adapter for AWS Lambda/Vercel
-handler = Adapter(app) 
+handler = Mangum(app) 
