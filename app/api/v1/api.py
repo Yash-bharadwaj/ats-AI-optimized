@@ -1,11 +1,17 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import resume, job_description, jobs, applicants, advanced_resume, railway_resume
 
 api_router = APIRouter()
 
-api_router.include_router(resume.router, prefix="/resume", tags=["resume"])
-api_router.include_router(job_description.router, prefix="/job-description", tags=["job-description"])
-api_router.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
-api_router.include_router(applicants.router, prefix="/applicants", tags=["applicants"])
-api_router.include_router(advanced_resume.router, prefix="/advanced", tags=["advanced"])
-api_router.include_router(railway_resume.router, prefix="/railway", tags=["railway"])
+# Only include Railway-optimized endpoints to avoid import issues
+try:
+    from app.api.v1.endpoints import railway_resume
+    api_router.include_router(railway_resume.router, prefix="/railway", tags=["railway"])
+except Exception as e:
+    # Create fallback endpoints if import fails
+    @api_router.get("/railway/health/railway")
+    async def railway_health_fallback():
+        return {
+            "status": "degraded",
+            "message": "Railway endpoints not available",
+            "railway_mode": True
+        }

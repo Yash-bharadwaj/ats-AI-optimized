@@ -1,6 +1,6 @@
 """
 Railway-Optimized Resume Parser for AI Recruitment Platform
-Lightweight version for Railway deployment
+Simplified version for Railway deployment
 """
 
 import logging
@@ -10,18 +10,17 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import httpx
 import os
-from app.services.railway_file_processors import railway_file_processor
 
 logger = logging.getLogger(__name__)
 
 class RailwayResumeParser:
-    """Railway-optimized resume parser with lightweight AI analysis"""
+    """Railway-optimized resume parser with basic capabilities"""
     
     def __init__(self):
         self.groq_api_key = os.getenv("GROQ_API_KEY")
         self.mistral_api_key = os.getenv("MISTRAL_API_KEY")
         
-        # Advanced extraction patterns
+        # Basic extraction patterns
         self.patterns = {
             'email': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
             'phone': r'(\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',
@@ -36,13 +35,12 @@ class RailwayResumeParser:
         filename: str,
         candidate_id: str
     ) -> Dict[str, Any]:
-        """Parse resume with Railway-optimized AI analysis"""
+        """Parse resume with Railway-optimized analysis"""
         try:
             logger.info(f"Starting Railway-optimized resume parsing for {filename}")
             
-            # Process file with Railway-optimized capabilities
-            file_result = await railway_file_processor.process_file(file_content, filename)
-            text_content = file_result.get('content', '')
+            # Basic file processing
+            text_content = await self._extract_text_basic(file_content, filename)
             
             if not text_content:
                 raise ValueError("No text content extracted from file")
@@ -51,30 +49,23 @@ class RailwayResumeParser:
             basic_info = await self._extract_basic_info(text_content)
             
             # Lightweight AI analysis
-            ai_analysis = await self._perform_ai_analysis_lightweight(text_content, basic_info)
+            ai_analysis = await self._perform_ai_analysis_basic(text_content, basic_info)
             
             # Skills analysis
-            skills_analysis = await self._analyze_skills_lightweight(text_content)
+            skills_analysis = await self._analyze_skills_basic(text_content)
             
             # Experience analysis
-            experience_analysis = await self._analyze_experience_lightweight(text_content)
+            experience_analysis = await self._analyze_experience_basic(text_content)
             
-            # Education analysis
-            education_analysis = await self._analyze_education_lightweight(text_content)
-            
-            # Generate comprehensive profile
-            profile = await self._generate_comprehensive_profile_lightweight(
-                basic_info, ai_analysis, skills_analysis, 
-                experience_analysis, education_analysis
+            # Generate basic profile
+            profile = await self._generate_basic_profile(
+                basic_info, ai_analysis, skills_analysis, experience_analysis
             )
             
             # Add metadata
             profile.update({
                 'candidate_id': candidate_id,
                 'filename': filename,
-                'file_metadata': file_result.get('metadata', {}),
-                'processing_method': file_result.get('processing_method', ''),
-                'confidence_score': file_result.get('confidence_score', 0.0),
                 'parsed_at': datetime.now().isoformat(),
                 'text_length': len(text_content),
                 'word_count': len(text_content.split()),
@@ -87,6 +78,27 @@ class RailwayResumeParser:
         except Exception as e:
             logger.error(f"Error in Railway resume parsing: {str(e)}")
             raise
+    
+    async def _extract_text_basic(self, file_content: bytes, filename: str) -> str:
+        """Extract text from file with basic processing"""
+        try:
+            # Try to process with Railway file processor
+            try:
+                from app.services.railway_file_processors import railway_file_processor
+                file_result = await railway_file_processor.process_file(file_content, filename)
+                return file_result.get('content', '')
+            except Exception as e:
+                logger.warning(f"Railway file processor not available: {str(e)}")
+                
+                # Fallback to basic text extraction
+                try:
+                    return file_content.decode('utf-8')
+                except:
+                    return file_content.decode('latin-1')
+                    
+        except Exception as e:
+            logger.error(f"Error extracting text: {str(e)}")
+            return ""
     
     async def _extract_basic_info(self, text_content: str) -> Dict[str, Any]:
         """Extract basic information using regex patterns"""
@@ -113,11 +125,6 @@ class RailwayResumeParser:
             if github_match:
                 basic_info['github'] = github_match.group()
             
-            # Extract website
-            website_match = re.search(self.patterns['website'], text_content)
-            if website_match:
-                basic_info['website'] = website_match.group()
-            
             # Extract name (first few lines)
             lines = text_content.split('\n')[:10]
             for line in lines:
@@ -133,19 +140,19 @@ class RailwayResumeParser:
             logger.error(f"Error extracting basic info: {str(e)}")
             return {}
     
-    async def _perform_ai_analysis_lightweight(self, text_content: str, basic_info: Dict[str, Any]) -> Dict[str, Any]:
-        """Perform lightweight AI analysis using Groq"""
+    async def _perform_ai_analysis_basic(self, text_content: str, basic_info: Dict[str, Any]) -> Dict[str, Any]:
+        """Perform basic AI analysis using Groq"""
         try:
             if not self.groq_api_key:
                 logger.warning("GROQ_API_KEY not configured")
                 return {}
             
-            # Create lightweight prompt for AI analysis
+            # Create basic prompt for AI analysis
             prompt = f"""
             Analyze this resume and extract key information in JSON format:
             
             Resume Text:
-            {text_content[:2000]}  # Shorter limit for Railway
+            {text_content[:1500]}  # Shorter limit for Railway
             
             Basic Info Found: {basic_info}
             
@@ -160,17 +167,7 @@ class RailwayResumeParser:
                 "current_company": "Current employer",
                 "experience_years": "Total years of experience (number)",
                 "skills": ["skill1", "skill2", "skill3"],
-                "technologies": ["tech1", "tech2", "tech3"],
-                "education": [
-                    {{
-                        "degree": "Degree name",
-                        "institution": "University name",
-                        "year": "Graduation year"
-                    }}
-                ],
-                "availability": "Immediate/2 weeks/1 month",
-                "salary_expectation": "Expected salary if mentioned",
-                "remote_preference": "Remote/Hybrid/On-site preference"
+                "technologies": ["tech1", "tech2", "tech3"]
             }}
             
             Return ONLY the JSON object, no additional text.
@@ -186,10 +183,10 @@ class RailwayResumeParser:
                     json={
                         "model": "llama3-8b-8192",
                         "messages": [{"role": "user", "content": prompt}],
-                        "max_tokens": 1500,
+                        "max_tokens": 1000,
                         "temperature": 0.1
                     },
-                    timeout=20.0
+                    timeout=15.0
                 )
                 
                 if response.status_code != 200:
@@ -214,11 +211,11 @@ class RailwayResumeParser:
                     return {}
                     
         except Exception as e:
-            logger.error(f"Error in lightweight AI analysis: {str(e)}")
+            logger.error(f"Error in basic AI analysis: {str(e)}")
             return {}
     
-    async def _analyze_skills_lightweight(self, text_content: str) -> Dict[str, Any]:
-        """Analyze skills with lightweight categorization"""
+    async def _analyze_skills_basic(self, text_content: str) -> Dict[str, Any]:
+        """Analyze skills with basic categorization"""
         try:
             # Common skill categories
             skill_categories = {
@@ -226,8 +223,7 @@ class RailwayResumeParser:
                 'frameworks': ['react', 'angular', 'vue', 'django', 'flask', 'spring', 'express', 'laravel', 'asp.net'],
                 'databases': ['mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'oracle', 'sqlite'],
                 'cloud_platforms': ['aws', 'azure', 'gcp', 'heroku', 'digitalocean', 'vercel'],
-                'tools': ['git', 'docker', 'kubernetes', 'jenkins', 'jira', 'confluence', 'figma'],
-                'languages': ['english', 'spanish', 'french', 'german', 'chinese', 'japanese', 'hindi']
+                'tools': ['git', 'docker', 'kubernetes', 'jenkins', 'jira', 'confluence', 'figma']
             }
             
             text_lower = text_content.lower()
@@ -251,8 +247,8 @@ class RailwayResumeParser:
             logger.error(f"Error analyzing skills: {str(e)}")
             return {}
     
-    async def _analyze_experience_lightweight(self, text_content: str) -> Dict[str, Any]:
-        """Analyze work experience with lightweight approach"""
+    async def _analyze_experience_basic(self, text_content: str) -> Dict[str, Any]:
+        """Analyze work experience with basic approach"""
         try:
             # Extract experience patterns
             experience_patterns = [
@@ -274,41 +270,14 @@ class RailwayResumeParser:
             return {
                 'total_years_experience': total_years,
                 'job_titles_found': len(job_titles),
-                'seniority_level': self._determine_seniority_level_lightweight(total_years, job_titles)
+                'seniority_level': self._determine_seniority_level_basic(total_years, job_titles)
             }
             
         except Exception as e:
             logger.error(f"Error analyzing experience: {str(e)}")
             return {}
     
-    async def _analyze_education_lightweight(self, text_content: str) -> Dict[str, Any]:
-        """Analyze education background with lightweight approach"""
-        try:
-            # Education patterns
-            education_patterns = {
-                'bachelor': r'bachelor|b\.s\.|b\.a\.|b\.e\.',
-                'master': r'master|m\.s\.|m\.a\.|m\.e\.',
-                'phd': r'ph\.d\.|doctorate|doctor',
-                'associate': r'associate|a\.a\.',
-                'high_school': r'high\s*school|h\.s\.'
-            }
-            
-            education_levels = []
-            for level, pattern in education_patterns.items():
-                if re.search(pattern, text_content, re.IGNORECASE):
-                    education_levels.append(level)
-            
-            return {
-                'education_levels': education_levels,
-                'highest_degree': self._get_highest_degree_lightweight(education_levels),
-                'education_count': len(education_levels)
-            }
-            
-        except Exception as e:
-            logger.error(f"Error analyzing education: {str(e)}")
-            return {}
-    
-    def _determine_seniority_level_lightweight(self, years: int, job_titles: List[str]) -> str:
+    def _determine_seniority_level_basic(self, years: int, job_titles: List[str]) -> str:
         """Determine seniority level based on experience and titles"""
         if years >= 10 or any('senior' in title.lower() for title in job_titles):
             return 'Senior'
@@ -319,25 +288,14 @@ class RailwayResumeParser:
         else:
             return 'Entry-Level'
     
-    def _get_highest_degree_lightweight(self, education_levels: List[str]) -> str:
-        """Get highest education degree"""
-        degree_hierarchy = ['phd', 'master', 'bachelor', 'associate', 'high_school']
-        
-        for degree in degree_hierarchy:
-            if degree in education_levels:
-                return degree
-        
-        return 'unknown'
-    
-    async def _generate_comprehensive_profile_lightweight(
+    async def _generate_basic_profile(
         self,
         basic_info: Dict[str, Any],
         ai_analysis: Dict[str, Any],
         skills_analysis: Dict[str, Any],
-        experience_analysis: Dict[str, Any],
-        education_analysis: Dict[str, Any]
+        experience_analysis: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Generate comprehensive candidate profile for Railway"""
+        """Generate basic candidate profile for Railway"""
         try:
             # Merge all analyses
             profile = {
@@ -345,24 +303,21 @@ class RailwayResumeParser:
                 'ai_analysis': ai_analysis,
                 'skills_analysis': skills_analysis,
                 'experience_analysis': experience_analysis,
-                'education_analysis': education_analysis,
                 
                 # Summary metrics
                 'summary': {
                     'total_skills': skills_analysis.get('total_skills', 0),
                     'years_experience': experience_analysis.get('total_years_experience', 0),
                     'seniority_level': experience_analysis.get('seniority_level', 'Unknown'),
-                    'highest_education': education_analysis.get('highest_degree', 'Unknown'),
                     'skill_categories': skills_analysis.get('skill_categories', 0)
                 },
                 
                 # Confidence scores
                 'confidence_scores': {
                     'basic_info': len(basic_info) / 5,  # 5 basic fields
-                    'ai_analysis': len(ai_analysis) / 10,  # 10 AI fields for Railway
+                    'ai_analysis': len(ai_analysis) / 8,  # 8 AI fields for Railway
                     'skills': skills_analysis.get('total_skills', 0) / 20,  # Normalized
-                    'experience': min(experience_analysis.get('total_years_experience', 0) / 10, 1.0),
-                    'education': education_analysis.get('education_count', 0) / 3
+                    'experience': min(experience_analysis.get('total_years_experience', 0) / 10, 1.0)
                 }
             }
             
@@ -373,7 +328,7 @@ class RailwayResumeParser:
             return profile
             
         except Exception as e:
-            logger.error(f"Error generating comprehensive profile: {str(e)}")
+            logger.error(f"Error generating basic profile: {str(e)}")
             return {}
 
 # Global instance

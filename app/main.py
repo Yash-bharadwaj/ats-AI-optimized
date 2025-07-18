@@ -1,6 +1,6 @@
 """
 Main FastAPI application for AI Recruitment Platform
-Railway-optimized version
+Railway-optimized version with minimal dependencies
 """
 
 import logging
@@ -9,16 +9,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
 
-from app.core.config import settings
-from app.api.v1.api import api_router
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title="AI Recruitment Platform",
     version="2.0.0",
     description="AI Recruitment Platform with Railway Optimization",
     docs_url="/api/v1/docs",
@@ -28,27 +25,31 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include API router
-app.include_router(api_router, prefix=settings.API_V1_STR)
-
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
     try:
-        # Import and initialize vector service
-        from app.services.vector_service import vector_service
-        await vector_service.initialize()
-        logger.info("✅ Vector service connected successfully on startup")
+        logger.info("🚀 AI Recruitment Platform starting up...")
         
-        # Import and initialize other services
-        from app.services.groq_service import groq_service
-        logger.info("✅ Groq service initialized successfully")
+        # Try to import and initialize services
+        try:
+            from app.services.vector_service import vector_service
+            await vector_service.initialize()
+            logger.info("✅ Vector service connected successfully")
+        except Exception as e:
+            logger.warning(f"⚠️ Vector service not available: {str(e)}")
+        
+        try:
+            from app.services.groq_service import groq_service
+            logger.info("✅ Groq service initialized")
+        except Exception as e:
+            logger.warning(f"⚠️ Groq service not available: {str(e)}")
         
         logger.info("🚀 AI Recruitment Platform started successfully")
         
@@ -73,20 +74,29 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     try:
-        # Check vector service
-        from app.services.vector_service import vector_service
-        vector_status = "healthy" if vector_service.is_connected() else "unhealthy"
-        
-        return {
+        # Basic health check
+        health_status = {
             "status": "healthy",
             "services": {
-                "vector_service": vector_status,
-                "groq_service": "operational",
+                "api": "operational",
                 "railway_mode": True
             },
             "version": "2.0.0",
             "railway_optimized": True
         }
+        
+        # Try to check vector service if available
+        try:
+            from app.services.vector_service import vector_service
+            if vector_service.is_connected():
+                health_status["services"]["vector_service"] = "healthy"
+            else:
+                health_status["services"]["vector_service"] = "unhealthy"
+        except:
+            health_status["services"]["vector_service"] = "unavailable"
+        
+        return health_status
+        
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
         return {
@@ -112,5 +122,30 @@ async def global_exception_handler(request: Request, exc: Exception):
 def handler(request, context):
     """Railway handler for serverless deployment"""
     return app(request, context)
+
+# Include API routes if available
+try:
+    from app.api.v1.api import api_router
+    app.include_router(api_router, prefix="/api/v1")
+    logger.info("✅ API routes loaded successfully")
+except Exception as e:
+    logger.warning(f"⚠️ API routes not available: {str(e)}")
+    
+    # Create basic endpoints if API routes fail
+    @app.post("/api/v1/railway/parse-railway")
+    async def parse_resume_railway_fallback():
+        return {
+            "success": False,
+            "message": "Railway-optimized parsing not available",
+            "railway_mode": True
+        }
+    
+    @app.get("/api/v1/railway/health/railway")
+    async def railway_health_check_fallback():
+        return {
+            "status": "degraded",
+            "message": "Railway services not fully available",
+            "railway_mode": True
+        }
 
 
