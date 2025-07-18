@@ -1,8 +1,5 @@
 # Models package
 from .job_description import (
-    JobDescription,
-    JobDescriptionCreate, 
-    JobDescriptionUpdate,
     JobCreateRequest,
     JobResponse,
     JobListResponse,
@@ -13,16 +10,20 @@ from .job_description import (
     Priority
 )
 from .applicant import (
-    Applicant,
-    ApplicantCreate,
-    ApplicantUpdate
+    ApplicantCreateRequest,
+    ApplicantUpdateRequest,
+    ApplicantResponse,
+    ApplicantListResponse,
+    ApplicantSearchRequest,
+    ApplicantAnalytics,
+    ResumeResponse,
+    ResumeListResponse,
+    ApplicantStatus,
+    ApplicantSource
 )
 
 __all__ = [
     # Job Description Models
-    "JobDescription",
-    "JobDescriptionCreate", 
-    "JobDescriptionUpdate",
     "JobCreateRequest",
     "JobResponse",
     "JobListResponse",
@@ -32,7 +33,14 @@ __all__ = [
     "JobType",
     "Priority",
     # Applicant Models
-    "Applicant",
-    "ApplicantCreate",
-    "ApplicantUpdate"
+    "ApplicantCreateRequest",
+    "ApplicantUpdateRequest",
+    "ApplicantResponse",
+    "ApplicantListResponse",
+    "ApplicantSearchRequest",
+    "ApplicantAnalytics",
+    "ResumeResponse",
+    "ResumeListResponse",
+    "ApplicantStatus",
+    "ApplicantSource"
 ] 
