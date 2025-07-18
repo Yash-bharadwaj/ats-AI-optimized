@@ -3,27 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
 import logging
-from dotenv import load_dotenv
-import sys
 import json
 import httpx
 from typing import Dict, Any
 
-# Add the parent directory to the path so we can import from app
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-# Load environment variables
-load_dotenv()
-
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-    ]
-)
-
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -56,14 +41,13 @@ async def api_docs():
 
 @app.post("/api/v1/resume/parse")
 async def parse_resume(file: UploadFile = File(...)):
-    """Parse resume using AI - Ultra minimal version for Vercel"""
+    """Parse resume using AI - Minimal version for Vercel"""
     try:
         # Validate file
         if not file.filename:
             raise HTTPException(status_code=400, detail="No file provided")
         
         # Check file size (4MB limit)
-        file_size = 0
         content = await file.read()
         file_size = len(content)
         
@@ -76,14 +60,10 @@ async def parse_resume(file: UploadFile = File(...)):
         # Parse with Groq AI
         parsed_data = await parse_with_groq(text_content)
         
-        # Generate embedding with Mistral (simplified)
-        embedding = await generate_embedding(text_content)
-        
         return {
             "success": True,
             "candidate_id": f"candidate_{os.getenv('PROJECT_NAME', 'ai_recruitment')}",
             "parsed_data": parsed_data,
-            "embedding_generated": bool(embedding),
             "file_size": file_size,
             "text_length": len(text_content)
         }
@@ -93,26 +73,34 @@ async def parse_resume(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 async def extract_text_from_file(content: bytes, filename: str) -> str:
-    """Extract text from file - Ultra minimal version"""
+    """Extract text from file - Minimal version"""
     try:
-        if filename.lower().endswith('.pdf'):
-            import PyPDF2
-            import io
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
-            text = ""
-            for page in pdf_reader.pages:
-                text += page.extract_text() + "\n"
-            return text
-        elif filename.lower().endswith('.docx'):
-            import docx
-            import io
-            doc = docx.Document(io.BytesIO(content))
-            text = ""
-            for paragraph in doc.paragraphs:
-                text += paragraph.text + "\n"
-            return text
-        elif filename.lower().endswith('.txt'):
+        if filename.lower().endswith('.txt'):
             return content.decode('utf-8')
+        elif filename.lower().endswith('.pdf'):
+            # Simple text extraction for PDF (no heavy dependencies)
+            try:
+                import PyPDF2
+                import io
+                pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
+                text = ""
+                for page in pdf_reader.pages:
+                    text += page.extract_text() + "\n"
+                return text
+            except ImportError:
+                return "PDF processing not available in minimal version"
+        elif filename.lower().endswith('.docx'):
+            # Simple text extraction for DOCX (no heavy dependencies)
+            try:
+                import docx
+                import io
+                doc = docx.Document(io.BytesIO(content))
+                text = ""
+                for paragraph in doc.paragraphs:
+                    text += paragraph.text + "\n"
+                return text
+            except ImportError:
+                return "DOCX processing not available in minimal version"
         else:
             raise ValueError(f"Unsupported file type: {filename}")
     except Exception as e:
@@ -120,11 +108,11 @@ async def extract_text_from_file(content: bytes, filename: str) -> str:
         raise HTTPException(status_code=400, detail=f"Error extracting text: {str(e)}")
 
 async def parse_with_groq(text_content: str) -> Dict[str, Any]:
-    """Parse resume with Groq AI - Ultra minimal version"""
+    """Parse resume with Groq AI - Minimal version"""
     try:
         groq_api_key = os.getenv("GROQ_API_KEY")
         if not groq_api_key:
-            raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured")
+            return {"error": "GROQ_API_KEY not configured"}
         
         prompt = f"""
         Extract the following information from this resume in JSON format:
@@ -138,7 +126,7 @@ async def parse_with_groq(text_content: str) -> Dict[str, Any]:
         - location
         
         Resume text:
-        {text_content[:3000]}  # Limit to first 3000 chars for Vercel
+        {text_content[:2000]}  # Limit to first 2000 chars for Vercel
         
         Return only valid JSON.
         """
@@ -153,21 +141,20 @@ async def parse_with_groq(text_content: str) -> Dict[str, Any]:
                 json={
                     "model": "llama3-8b-8192",
                     "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 1000,
+                    "max_tokens": 500,
                     "temperature": 0.1
                 },
                 timeout=30.0
             )
             
             if response.status_code != 200:
-                raise HTTPException(status_code=500, detail="Groq API error")
+                return {"error": "Groq API error"}
             
             result = response.json()
             content = result["choices"][0]["message"]["content"]
             
             # Try to extract JSON from response
             try:
-                # Find JSON in the response
                 start = content.find('{')
                 end = content.rfind('}') + 1
                 if start != -1 and end != 0:
@@ -182,54 +169,14 @@ async def parse_with_groq(text_content: str) -> Dict[str, Any]:
         logger.error(f"Error with Groq API: {str(e)}")
         return {"error": f"Groq API error: {str(e)}"}
 
-async def generate_embedding(text_content: str) -> list:
-    """Generate embedding with Mistral AI - Ultra minimal version"""
-    try:
-        mistral_api_key = os.getenv("MISTRAL_API_KEY")
-        if not mistral_api_key:
-            logger.warning("MISTRAL_API_KEY not configured, skipping embedding")
-            return []
-        
-        # Limit text for Vercel
-        limited_text = text_content[:1000]
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.mistral.ai/v1/embeddings",
-                headers={
-                    "Authorization": f"Bearer {mistral_api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "mistral-embed",
-                    "input": limited_text
-                },
-                timeout=30.0
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                return result["data"][0]["embedding"]
-            else:
-                logger.warning(f"Mistral API error: {response.status_code}")
-                return []
-                
-    except Exception as e:
-        logger.error(f"Error with Mistral API: {str(e)}")
-        return []
-
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Global exception handler caught: {str(exc)}")
-    logger.error(f"Request URL: {request.url}")
-    logger.error(f"Request method: {request.method}")
     return JSONResponse(
         status_code=500,
         content={"detail": f"Internal server error: {str(exc)}"}
     )
 
-# For Vercel deployment - this is the main handler
+# For Vercel deployment
 from mangum import Mangum
-
-# Create the ASGI adapter for AWS Lambda/Vercel
 handler = Mangum(app) 

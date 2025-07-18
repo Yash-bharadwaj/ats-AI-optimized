@@ -1,29 +1,22 @@
-# Core Framework - Minimal FastAPI setup
+# Core Framework - Absolute minimal
 fastapi==0.110.1
 uvicorn==0.25.0
 pydantic==2.11.4
-pydantic-settings==2.10.1
 
-# AI/ML - External APIs only (no heavy ML libraries)
-groq==0.30.0
-
-# File Processing - Ultra lightweight
-PyPDF2==3.0.1
-python-docx==1.2.0
-python-multipart==0.0.20
-
-# Utilities - Essential only
-python-dotenv==1.1.0
-requests==2.32.3
+# HTTP client for API calls
 httpx==0.28.1
 
 # Vercel Serverless Support
 mangum==0.17.0
 
+# Optional file processing (will work without these)
+PyPDF2==3.0.1
+python-docx==1.2.0
+python-multipart==0.0.20
+
 # Removed for Vercel size limits:
-# pymilvus - Use external Milvus API instead
+# pymilvus - Use external API instead
 # numpy - Not needed for basic operations
-# Pillow - Image processing removed
-# pytesseract - OCR removed
-# pymupdf - Replaced with PyPDF2
-# psycopg2-binary - PostgreSQL removed 
+# pydantic-settings - Use os.getenv instead
+# python-dotenv - Not needed for Vercel
+# groq - Use direct HTTP calls instead 
