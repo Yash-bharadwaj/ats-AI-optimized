@@ -14,7 +14,7 @@ class RailwayFileProcessor:
     """Railway-optimized file processor with basic capabilities"""
     
     def __init__(self):
-        self.supported_formats = ['.pdf', '.docx', '.txt', '.jpg', '.jpeg', '.png']
+        self.supported_formats = ['.pdf', '.docx', '.txt']
         
     async def process_file(self, file_content: bytes, filename: str) -> Dict[str, Any]:
         """Process any file type with Railway-optimized capabilities"""
@@ -41,8 +41,6 @@ class RailwayFileProcessor:
                 return await self._process_docx_basic(file_content, filename)
             elif file_ext == '.txt':
                 return await self._process_txt_basic(file_content, filename)
-            elif file_ext in ['.jpg', '.jpeg', '.png']:
-                return await self._process_image_basic(file_content, filename)
             else:
                 raise ValueError(f"Unsupported file type: {file_ext}")
                 
@@ -166,43 +164,6 @@ class RailwayFileProcessor:
             
         except Exception as e:
             logger.error(f"Error processing TXT {filename}: {str(e)}")
-            raise
-    
-    async def _process_image_basic(self, file_content: bytes, filename: str) -> Dict[str, Any]:
-        """Process image files with basic capabilities"""
-        try:
-            # Try to use PIL for basic image processing
-            try:
-                from PIL import Image
-                image = Image.open(io.BytesIO(file_content))
-                
-                metadata = {
-                    "format": image.format,
-                    "mode": image.mode,
-                    "size": image.size,
-                    "width": image.width,
-                    "height": image.height,
-                    "processing_method": "pil"
-                }
-                
-            except ImportError:
-                logger.warning("PIL not available, using basic image processing")
-                metadata = {
-                    "format": "unknown",
-                    "size_bytes": len(file_content),
-                    "processing_method": "basic"
-                }
-            
-            return {
-                "content": f"Image file: {filename} - Text extraction not available in Railway mode",
-                "metadata": metadata,
-                "file_type": "image",
-                "processing_method": metadata["processing_method"],
-                "confidence_score": 0.8
-            }
-            
-        except Exception as e:
-            logger.error(f"Error processing image {filename}: {str(e)}")
             raise
     
     async def extract_structured_data(self, text_content: str) -> Dict[str, Any]:
