@@ -6,11 +6,13 @@ import logging
 from dotenv import load_dotenv
 import sys
 import os
+from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.services.vector_service import vector_service
 
 # Load environment variables
 load_dotenv()
@@ -33,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
+    version="2.0.0",  # Updated version for advanced features
+    description="AI Recruitment Platform with Advanced OCR, AI Analysis, and Smart Matching",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
@@ -54,24 +58,54 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 async def startup_event():
     """Initialize services on startup"""
     try:
-        # Test Milvus connection
-        from app.services.vector_service import VectorService
-        from app.services.groq_service import GroqService
-        
-        groq_service = GroqService()
-        vector_service = VectorService.create_with_groq(groq_service)
-        await vector_service.connect()
+        # Initialize vector service
+        await vector_service.initialize_collections()
         logger.info("✅ Vector service connected successfully on startup")
     except Exception as e:
         logger.error(f"❌ Failed to connect vector service on startup: {e}")
 
 @app.get("/")
 async def root():
-    return {"message": "AI Recruitment Platform API", "version": "1.0.0"}
+    """Root endpoint with platform information"""
+    return {
+        "message": "AI Recruitment Platform - Advanced Edition",
+        "version": "2.0.0",
+        "features": [
+            "Advanced OCR and Image Processing",
+            "Sophisticated AI Analysis", 
+            "Advanced Matching Algorithms",
+            "Multi-format File Support",
+            "Comprehensive Analytics"
+        ],
+        "status": "operational",
+        "timestamp": datetime.now().isoformat()
+    }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "message": "API is running"}
+    """Health check endpoint"""
+    try:
+        # Check vector service connection
+        await vector_service.initialize_collections()
+        logger.info("✅ Vector service connected successfully on startup")
+        
+        return {
+            "status": "healthy",
+            "message": "API is running",
+            "timestamp": datetime.now().isoformat(),
+            "version": "2.0.0",
+            "features": "Advanced OCR, AI Analysis, Smart Matching"
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "unhealthy",
+                "message": f"Health check failed: {str(e)}",
+                "timestamp": datetime.now().isoformat()
+            }
+        )
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
