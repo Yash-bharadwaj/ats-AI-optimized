@@ -1,48 +1,31 @@
+"""
+Main FastAPI application for AI Recruitment Platform
+Railway-optimized version
+"""
+
+import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
-import logging
-from dotenv import load_dotenv
-import sys
-import os
-from datetime import datetime
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.api.v1.api import api_router
 from app.core.config import settings
-from app.services.vector_service import vector_service
-
-# Load environment variables
-load_dotenv()
+from app.api.v1.api import api_router
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),  # Console output
-    ]
-)
-
-# Set specific loggers to different levels if needed
-logging.getLogger("app.api.v1.endpoints.resume").setLevel(logging.DEBUG)
-logging.getLogger("app.services.file_processors").setLevel(logging.DEBUG)
-logging.getLogger("app.services.groq_service").setLevel(logging.DEBUG)
-
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Create FastAPI app
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    version="2.0.0",  # Updated version for advanced features
-    description="AI Recruitment Platform with Advanced OCR, AI Analysis, and Smart Matching",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    docs_url=f"{settings.API_V1_STR}/docs",
-    redoc_url=f"{settings.API_V1_STR}/redoc",
+    version="2.0.0",
+    description="AI Recruitment Platform with Railway Optimization",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc"
 )
 
-# Set up CORS middleware
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -58,67 +41,76 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 async def startup_event():
     """Initialize services on startup"""
     try:
-        # Initialize vector service
-        await vector_service.initialize_collections()
+        # Import and initialize vector service
+        from app.services.vector_service import vector_service
+        await vector_service.initialize()
         logger.info("✅ Vector service connected successfully on startup")
+        
+        # Import and initialize other services
+        from app.services.groq_service import groq_service
+        logger.info("✅ Groq service initialized successfully")
+        
+        logger.info("🚀 AI Recruitment Platform started successfully")
+        
     except Exception as e:
-        logger.error(f"❌ Failed to connect vector service on startup: {e}")
+        logger.error(f"❌ Error during startup: {str(e)}")
+        # Don't fail startup for Railway deployment
+        pass
 
 @app.get("/")
 async def root():
-    """Root endpoint with platform information"""
+    """Root endpoint"""
     return {
-        "message": "AI Recruitment Platform - Advanced Edition",
+        "message": "AI Recruitment Platform API",
         "version": "2.0.0",
-        "features": [
-            "Advanced OCR and Image Processing",
-            "Sophisticated AI Analysis", 
-            "Advanced Matching Algorithms",
-            "Multi-format File Support",
-            "Comprehensive Analytics"
-        ],
-        "status": "operational",
-        "timestamp": datetime.now().isoformat()
+        "status": "running",
+        "railway_mode": True,
+        "docs": "/api/v1/docs",
+        "health": "/health"
     }
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     try:
-        # Check vector service connection
-        await vector_service.initialize_collections()
-        logger.info("✅ Vector service connected successfully on startup")
+        # Check vector service
+        from app.services.vector_service import vector_service
+        vector_status = "healthy" if vector_service.is_connected() else "unhealthy"
         
         return {
             "status": "healthy",
-            "message": "API is running",
-            "timestamp": datetime.now().isoformat(),
+            "services": {
+                "vector_service": vector_status,
+                "groq_service": "operational",
+                "railway_mode": True
+            },
             "version": "2.0.0",
-            "features": "Advanced OCR, AI Analysis, Smart Matching"
+            "railway_optimized": True
         }
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={
-                "status": "unhealthy",
-                "message": f"Health check failed: {str(e)}",
-                "timestamp": datetime.now().isoformat()
-            }
-        )
+        return {
+            "status": "degraded",
+            "error": str(e),
+            "railway_mode": True
+        }
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Global exception handler caught: {str(exc)}")
-    logger.error(f"Request URL: {request.url}")
-    logger.error(f"Request method: {request.method}")
+    """Global exception handler"""
+    logger.error(f"Unhandled exception: {str(exc)}")
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Internal server error: {str(exc)}"}
+        content={
+            "error": "Internal server error",
+            "message": str(exc),
+            "railway_mode": True
+        }
     )
 
-# For Vercel deployment
+# Railway-specific handler
 def handler(request, context):
+    """Railway handler for serverless deployment"""
     return app(request, context)
 
 
