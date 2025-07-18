@@ -180,7 +180,7 @@ cython_debug/
 *.sqlite3
 
 # AI/ML specific
-models/
+# models/  # Commented out to allow app/models/ (Pydantic models)
 *.pkl
 *.joblib
 *.h5
