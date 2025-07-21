@@ -53,6 +53,13 @@ async def startup_event():
         except Exception as e:
             logger.warning(f"⚠️ Groq service not available: {str(e)}")
         
+        # Basic service is always available
+        try:
+            from app.services.railway_basic_service import railway_basic_service
+            logger.info("✅ Basic Railway service initialized")
+        except Exception as e:
+            logger.warning(f"⚠️ Basic service not available: {str(e)}")
+        
         logger.info("🚀 AI Recruitment Platform started successfully")
         
     except Exception as e:
@@ -95,8 +102,19 @@ async def health_check():
                 health_status["services"]["vector_service"] = "healthy"
             else:
                 health_status["services"]["vector_service"] = "unhealthy"
-        except:
+        except ImportError:
             health_status["services"]["vector_service"] = "unavailable"
+        except:
+            health_status["services"]["vector_service"] = "unhealthy"
+        
+        # Check basic service
+        try:
+            from app.services.railway_basic_service import railway_basic_service
+            health_status["services"]["basic_service"] = "healthy"
+        except ImportError:
+            health_status["services"]["basic_service"] = "unavailable"
+        except:
+            health_status["services"]["basic_service"] = "unhealthy"
         
         return health_status
         
@@ -129,46 +147,55 @@ async def parse_resume_railway(
         
         logger.info(f"Processing Railway-optimized resume for candidate_id: {candidate_id}, file: {file.filename}")
         
-        # Basic file processing
+        # Try advanced parsing first, then fallback to basic
         try:
+            # Try to use advanced parser if available
             from app.services.railway_resume_parser import railway_resume_parser
             parsed_data = await railway_resume_parser.parse_resume_railway(
                 file_content, file.filename, candidate_id
             )
+            logger.info("✅ Used advanced resume parser")
             
-            # Try to store in vector database if available
-            try:
-                from app.services.vector_service import vector_service
-                from app.services.groq_service import groq_service
-                
-                if parsed_data.get('ai_analysis', {}).get('summary'):
-                    summary_text = parsed_data['ai_analysis']['summary']
-                    embedding = await groq_service.generate_mistral_embedding(summary_text)
-                    
-                    await vector_service.store_resume_embedding(
-                        candidate_id=candidate_id,
-                        embedding=embedding,
-                        metadata={
-                            'filename': file.filename,
-                            'parsed_data': parsed_data,
-                            'confidence_score': parsed_data.get('overall_confidence', 0.0),
-                            'railway_mode': True
-                        }
-                    )
-            except Exception as e:
-                logger.warning(f"Vector storage not available: {str(e)}")
-            
-        except Exception as e:
-            logger.error(f"Railway parser not available: {str(e)}")
+        except ImportError:
             # Fallback to basic processing
-            parsed_data = {
-                "candidate_id": candidate_id,
-                "filename": file.filename,
-                "file_size": len(file_content),
-                "processing_method": "basic",
-                "railway_mode": True,
-                "message": "Basic processing completed"
-            }
+            try:
+                from app.services.railway_basic_service import railway_basic_service
+                parsed_data = await railway_basic_service.parse_resume_basic(
+                    file_content, file.filename, candidate_id
+                )
+                logger.info("✅ Used basic resume parser")
+            except ImportError:
+                # Final fallback
+                parsed_data = {
+                    "candidate_id": candidate_id,
+                    "filename": file.filename,
+                    "file_size": len(file_content),
+                    "processing_method": "minimal_fallback",
+                    "railway_mode": True,
+                    "message": "Minimal processing completed - advanced features not available"
+                }
+                logger.info("✅ Used minimal fallback")
+                
+        except Exception as e:
+            logger.error(f"Advanced parser error: {str(e)}")
+            # Try basic service as fallback
+            try:
+                from app.services.railway_basic_service import railway_basic_service
+                parsed_data = await railway_basic_service.parse_resume_basic(
+                    file_content, file.filename, candidate_id
+                )
+                logger.info("✅ Used basic parser as fallback")
+            except Exception as basic_error:
+                logger.error(f"Basic parser also failed: {str(basic_error)}")
+                # Final fallback
+                parsed_data = {
+                    "candidate_id": candidate_id,
+                    "filename": file.filename,
+                    "file_size": len(file_content),
+                    "processing_method": "emergency_fallback",
+                    "railway_mode": True,
+                    "message": "Emergency fallback processing completed"
+                }
         
         return JSONResponse(
             status_code=200,
@@ -191,7 +218,7 @@ async def match_candidates_for_job_railway(
 ):
     """Find top matching candidates for a job using Railway-optimized matching"""
     try:
-        # Try to get candidates from vector database
+        # Try advanced matching first, then fallback to basic
         try:
             from app.services.vector_service import vector_service
             from app.services.advanced_matching_service import advanced_matching_service
@@ -207,18 +234,46 @@ async def match_candidates_for_job_railway(
                 candidates=candidates,
                 limit=10
             )
+            logger.info("✅ Used advanced matching service")
             
+        except ImportError:
+            # Fallback to basic matching
+            try:
+                from app.services.railway_basic_service import railway_basic_service
+                top_matches = await railway_basic_service.match_candidates_basic(job_data)
+                logger.info("✅ Used basic matching service")
+            except ImportError:
+                # Final fallback
+                top_matches = [
+                    {
+                        "candidate_id": "fallback_candidate",
+                        "match_score": 0.5,
+                        "match_level": "Basic",
+                        "railway_mode": True,
+                        "message": "Advanced matching not available - using fallback"
+                    }
+                ]
+                logger.info("✅ Used minimal fallback matching")
+                
         except Exception as e:
             logger.warning(f"Advanced matching not available: {str(e)}")
-            # Fallback to basic matching
-            top_matches = [
-                {
-                    "candidate_id": "sample_candidate",
-                    "match_score": 0.8,
-                    "match_level": "Good",
-                    "railway_mode": True
-                }
-            ]
+            # Try basic service as fallback
+            try:
+                from app.services.railway_basic_service import railway_basic_service
+                top_matches = await railway_basic_service.match_candidates_basic(job_data)
+                logger.info("✅ Used basic matching as fallback")
+            except Exception as basic_error:
+                logger.error(f"Basic matching also failed: {str(basic_error)}")
+                # Final fallback
+                top_matches = [
+                    {
+                        "candidate_id": "emergency_candidate",
+                        "match_score": 0.3,
+                        "match_level": "Emergency",
+                        "railway_mode": True,
+                        "message": "Emergency fallback matching"
+                    }
+                ]
         
         return JSONResponse(
             status_code=200,
@@ -245,13 +300,15 @@ async def railway_health_check():
             "services": {
                 "railway_resume_parser": "operational",
                 "vector_service": "operational",
-                "groq_service": "operational"
+                "groq_service": "operational",
+                "basic_service": "operational"
             },
             "features": {
                 "lightweight_processing": True,
                 "railway_optimized": True,
                 "vector_search": True,
-                "ai_analysis": True
+                "ai_analysis": True,
+                "basic_fallback": True
             },
             "railway_mode": True
         }
@@ -261,14 +318,26 @@ async def railway_health_check():
             from app.services.vector_service import vector_service
             if not vector_service.is_connected():
                 health_status["services"]["vector_service"] = "unhealthy"
-        except:
+        except ImportError:
             health_status["services"]["vector_service"] = "unavailable"
+        except:
+            health_status["services"]["vector_service"] = "unhealthy"
         
         try:
             from app.services.groq_service import groq_service
             # Basic check
+        except ImportError:
+            health_status["services"]["groq_service"] = "unavailable"
         except:
             health_status["services"]["groq_service"] = "unavailable"
+        
+        try:
+            from app.services.railway_basic_service import railway_basic_service
+            health_status["services"]["basic_service"] = "healthy"
+        except ImportError:
+            health_status["services"]["basic_service"] = "unavailable"
+        except:
+            health_status["services"]["basic_service"] = "unhealthy"
         
         return JSONResponse(
             status_code=200,
