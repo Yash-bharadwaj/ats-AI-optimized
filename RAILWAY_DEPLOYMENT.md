@@ -1,222 +1,300 @@
 # Railway Deployment Guide for AI Recruitment Platform
 
-## Overview
-This guide provides step-by-step instructions for deploying the AI Recruitment Platform on Railway with optimized settings for production use.
+## 🚀 Quick Deploy to Railway
 
-## Prerequisites
-- Railway account
-- GitHub repository with the project
-- API keys for Groq and Mistral AI
-- Milvus Cloud account
+### Option 1: Deploy via Railway Dashboard
+1. Go to [Railway.app](https://railway.app)
+2. Click "New Project" → "Deploy from GitHub repo"
+3. Connect your GitHub repository
+4. Railway will automatically detect the configuration and deploy
 
-## Environment Variables Setup
+### Option 2: Deploy via Railway CLI
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
 
-### Required Environment Variables
+# Login to Railway
+railway login
+
+# Deploy from your project directory
+railway up
+```
+
+## 🔧 Configuration Files
+
+### Railway Configuration (`railway.json`)
+```json
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "python railway_start.py",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10,
+    "numReplicas": 1
+  }
+}
+```
+
+### Startup Script (`railway_start.py`)
+- Properly handles `$PORT` environment variable
+- Includes error handling and logging
+- Optimized for Railway's serverless environment
+
+### Procfile
+```
+web: python railway_start.py
+```
+
+## 🌍 Environment Variables
+
 Set these in your Railway project dashboard:
 
-```bash
-# API Keys
+### Required Variables
+```env
+# AI Services
 GROQ_API_KEY=your_groq_api_key
 MISTRAL_API_KEY=your_mistral_api_key
 
-# Milvus Cloud Configuration
+# Vector Database (Milvus/Zilliz)
 MILVUS_HOST=your_milvus_host
-MILVUS_PORT=443
+MILVUS_PORT=19530
 MILVUS_USER=your_milvus_user
 MILVUS_PASSWORD=your_milvus_password
-MILVUS_DB_NAME=your_database_name
-MILVUS_USE_SECURE=true
 MILVUS_TOKEN=your_milvus_token
+MILVUS_USE_SECURE=true
 
-# Collection Names
-RESUME_COLLECTION_NAME=resume_embeddings_mistral
-JOB_COLLECTION_NAME=job_embeddings_mistral
-
-# Platform Configuration
+# Application Settings
+MAX_FILE_SIZE=4194304
 EMBEDDING_DIMENSION=1024
-SKILLS_MATCH_WEIGHT=0.7
-EXPERIENCE_MATCH_WEIGHT=0.2
-LOCATION_MATCH_WEIGHT=0.1
+```
+
+### Optional Variables
+```env
+# Debug and Logging
+DEBUG=false
+LOG_LEVEL=info
 
 # Rate Limiting
 RATE_LIMIT_PER_MINUTE=30
 RATE_LIMIT_PER_HOUR=500
 
-# Security and CORS
-DEBUG=false
-ALLOWED_ORIGINS=["*"]
-MAX_FILE_SIZE=4194304
-
-# Project Information
-PROJECT_NAME="AI Recruitment Platform"
-API_V1_STR=/api/v1
+# Vector Collections
+RESUME_COLLECTION_NAME=resume_embeddings_mistral
+JOB_COLLECTION_NAME=job_embeddings_mistral
 ```
 
-## Deployment Steps
+## 📊 Health Checks
 
-### 1. Connect Repository
-1. Go to Railway dashboard
-2. Click "New Project"
-3. Select "Deploy from GitHub repo"
-4. Choose your repository
-5. Select the main branch
+The application includes multiple health check endpoints:
 
-### 2. Configure Build Settings
-Railway will automatically detect the Python project. The build process uses:
-- `requirements-railway.txt` for dependencies
-- `Procfile` for startup command
-- Python 3.11 runtime
-
-### 3. Set Environment Variables
-1. Go to your project in Railway dashboard
-2. Navigate to "Variables" tab
-3. Add all required environment variables listed above
-4. Save changes
-
-### 4. Deploy
-1. Railway will automatically start the deployment
-2. Monitor the build logs for any issues
-3. Wait for deployment to complete
-
-## Railway-Optimized Features
-
-### Lightweight File Processing
-- Uses `Pillow` for basic image processing
-- `PyPDF2` for PDF text extraction
-- `python-docx` for Word document processing
-- No heavy dependencies like `pytesseract` or `opencv-python`
-
-### Optimized AI Analysis
-- Shorter prompts for faster processing
-- Reduced token limits for cost efficiency
-- Graceful fallbacks for API failures
-
-### Advanced Matching
-- Full-featured matching algorithms
-- Vector-based similarity search
-- Comprehensive scoring system
-
-## API Endpoints
-
-### Railway-Optimized Endpoints
-- `POST /api/v1/railway/parse-railway` - Parse resumes with Railway optimization
-- `POST /api/v1/railway/match-candidates-railway` - Find matching candidates
-- `POST /api/v1/railway/calculate-match-score-railway` - Calculate match scores
-- `GET /api/v1/railway/candidate/{id}/profile-railway` - Get candidate profiles
-- `GET /api/v1/railway/health/railway` - Railway health check
-
-### Standard Endpoints (Still Available)
-- `POST /api/v1/resume/parse` - Standard resume parsing
-- `POST /api/v1/advanced/parse-advanced` - Advanced parsing (if dependencies available)
-
-## Troubleshooting
-
-### Build Failures
-If the build fails due to dependencies:
-
-1. **Check requirements-railway.txt**: Ensure all dependencies are compatible
-2. **Verify Python version**: Railway uses Python 3.11
-3. **Check build logs**: Look for specific error messages
-
-### Runtime Errors
-Common issues and solutions:
-
-1. **Import Errors**:
-   ```bash
-   # Check if all modules are properly imported
-   # Railway-optimized services should handle missing dependencies gracefully
-   ```
-
-2. **Memory Issues**:
-   - Railway provides 8GB RAM by default
-   - Optimized services use less memory
-   - Monitor memory usage in Railway dashboard
-
-3. **API Timeouts**:
-   - Reduced timeout settings for Railway
-   - Graceful error handling for API failures
-
-### Environment Variable Issues
-1. **Missing Variables**: Ensure all required variables are set
-2. **Invalid Values**: Check API keys and connection strings
-3. **CORS Issues**: Verify `ALLOWED_ORIGINS` setting
-
-## Performance Optimization
-
-### Railway-Specific Optimizations
-1. **Lightweight Dependencies**: Uses minimal dependencies
-2. **Efficient Processing**: Optimized file processing algorithms
-3. **Smart Caching**: Vector database for fast searches
-4. **Graceful Degradation**: Services work even with missing dependencies
-
-### Monitoring
-1. **Railway Dashboard**: Monitor logs and performance
-2. **Health Checks**: Use `/health` endpoint
-3. **API Metrics**: Track response times and errors
-
-## Testing the Deployment
-
-### Health Check
+### Main Health Check
 ```bash
-curl https://your-railway-app.railway.app/health
+GET /health
 ```
 
-### Parse Resume
+### Railway-Specific Health Check
 ```bash
-curl -X POST "https://your-railway-app.railway.app/api/v1/railway/parse-railway" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@resume.pdf"
+GET /api/v1/health/railway
 ```
 
-### Railway Health Check
+### Service Status
 ```bash
-curl https://your-railway-app.railway.app/api/v1/railway/health/railway
+GET /
 ```
 
-## Production Considerations
+## 🔍 Troubleshooting
 
-### Security
-1. **API Keys**: Keep API keys secure
-2. **CORS**: Configure allowed origins properly
-3. **Rate Limiting**: Monitor API usage
+### Common Issues
 
-### Scalability
-1. **Railway Auto-scaling**: Automatic scaling based on traffic
-2. **Database**: Milvus Cloud handles vector storage
-3. **Caching**: Vector embeddings for fast searches
+#### 1. Port Configuration Error
+**Error**: `Invalid value for '--port': '$PORT' is not a valid integer`
 
-### Cost Optimization
-1. **API Usage**: Monitor Groq and Mistral API usage
-2. **Railway Credits**: Monitor Railway resource usage
-3. **Efficient Processing**: Lightweight algorithms reduce costs
+**Solution**: The `railway_start.py` script properly handles the PORT environment variable:
+```python
+port = int(os.environ.get("PORT", 8000))
+```
 
-## Support
+#### 2. Build Failures
+**Error**: Build process fails during dependency installation
+
+**Solution**: 
+- Check `requirements-railway.txt` for compatible versions
+- Ensure all dependencies are available for Python 3.11
+- Use the Railway-specific requirements file
+
+#### 3. Service Connection Issues
+**Error**: Vector database or AI service connection failures
+
+**Solution**:
+- Verify environment variables are set correctly
+- Check API keys and credentials
+- Ensure services are accessible from Railway's network
+
+#### 4. Memory Issues
+**Error**: Application runs out of memory
+
+**Solution**:
+- Railway provides 512MB RAM by default
+- Optimize dependencies in `requirements-railway.txt`
+- Use lightweight processing for large files
+
+### Debug Commands
+
+#### Check Railway Logs
+```bash
+railway logs
+```
+
+#### View Environment Variables
+```bash
+railway variables
+```
+
+#### Restart Service
+```bash
+railway service restart
+```
+
+## �� Deployment Steps
+
+### 1. Prepare Your Repository
+```bash
+# Ensure all files are committed
+git add .
+git commit -m "Railway deployment ready"
+git push origin main
+```
+
+### 2. Deploy to Railway
+```bash
+# Option A: Use Railway CLI
+railway up
+
+# Option B: Use deployment script
+./railway_deploy.sh
+```
+
+### 3. Configure Environment Variables
+1. Go to Railway Dashboard
+2. Select your project
+3. Go to "Variables" tab
+4. Add all required environment variables
+
+### 4. Test Deployment
+```bash
+# Test health endpoint
+curl https://your-app.railway.app/health
+
+# Test API documentation
+curl https://your-app.railway.app/docs
+```
+
+## 📈 Monitoring
+
+### Railway Dashboard
+- **Deployments**: View deployment history and status
+- **Logs**: Real-time application logs
+- **Metrics**: CPU, memory, and network usage
+- **Variables**: Environment variable management
+
+### Application Monitoring
+- **Health Checks**: Automatic health monitoring
+- **Error Logging**: Comprehensive error tracking
+- **Performance**: Response time monitoring
+
+## 🔄 Continuous Deployment
+
+### GitHub Integration
+1. Connect your GitHub repository to Railway
+2. Enable automatic deployments on push
+3. Railway will automatically deploy on every commit
+
+### Manual Deployment
+```bash
+# Deploy specific branch
+railway up --branch feature-branch
+
+# Deploy with custom environment
+railway up --environment production
+```
+
+## 🛡️ Security
+
+### Environment Variables
+- Never commit sensitive data to Git
+- Use Railway's secure variable storage
+- Rotate API keys regularly
+
+### CORS Configuration
+```python
+# Configured for development
+ALLOWED_ORIGINS: List[str] = ["*"]
+```
+
+### Rate Limiting
+```python
+RATE_LIMIT_PER_MINUTE: int = 30
+RATE_LIMIT_PER_HOUR: int = 500
+```
+
+## 📝 API Endpoints
+
+### Core Endpoints
+- `POST /api/v1/resume/parse` - Parse resume files
+- `POST /api/v1/jobs/match` - Match candidates for jobs
+- `GET /health` - Health check
+- `GET /docs` - API documentation
+
+### Railway-Specific Endpoints
+- `GET /api/v1/health/railway` - Railway health check
+- `GET /` - Root endpoint with status
+
+## 🎯 Best Practices
+
+### 1. Environment Management
+- Use different environments for dev/staging/prod
+- Never expose sensitive data in logs
+- Use Railway's variable encryption
+
+### 2. Performance Optimization
+- Keep dependencies minimal
+- Use async operations where possible
+- Implement proper error handling
+
+### 3. Monitoring
+- Set up alerts for critical errors
+- Monitor response times
+- Track API usage patterns
+
+### 4. Security
+- Validate all inputs
+- Implement proper authentication
+- Use HTTPS for all communications
+
+## 🆘 Support
 
 ### Railway Support
-- Railway documentation: https://docs.railway.app/
-- Railway Discord: https://railway.app/discord
+- [Railway Documentation](https://docs.railway.app)
+- [Railway Discord](https://discord.gg/railway)
+- [Railway Status](https://status.railway.app)
 
-### Platform Issues
-- Check logs in Railway dashboard
-- Use health check endpoints
-- Monitor API response times
+### Application Support
+- Check logs for detailed error messages
+- Use health check endpoints for diagnostics
+- Monitor Railway dashboard for system status
 
-## Migration from Vercel
+## 🚀 Next Steps
 
-If migrating from Vercel:
+1. **Deploy your application** using the steps above
+2. **Configure environment variables** in Railway dashboard
+3. **Test all endpoints** to ensure functionality
+4. **Set up monitoring** and alerts
+5. **Integrate with your frontend** application
+6. **Monitor performance** and optimize as needed
 
-1. **Export Environment Variables**: Copy all variables to Railway
-2. **Update Dependencies**: Use `requirements-railway.txt`
-3. **Test Endpoints**: Verify all functionality works
-4. **Update Documentation**: Point to new Railway URLs
-
-## Conclusion
-
-The Railway deployment provides:
-- ✅ Reliable deployment with 8GB RAM
-- ✅ Full advanced features with lightweight optimization
-- ✅ Automatic scaling and monitoring
-- ✅ Cost-effective production deployment
-- ✅ Comprehensive error handling and logging
-
-Your AI Recruitment Platform is now ready for production use on Railway! 
+Your AI Recruitment Platform should now be successfully deployed on Railway! 🎉 

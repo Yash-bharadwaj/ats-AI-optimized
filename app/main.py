@@ -74,7 +74,7 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint for Railway"""
     try:
         # Basic health check
         health_status = {

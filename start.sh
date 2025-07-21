@@ -5,5 +5,5 @@ PORT=${PORT:-8000}
 
 echo "Starting AI Recruitment Platform on port $PORT"
 
-# Start the FastAPI application
-exec uvicorn app.main:app --host 0.0.0.0 --port $PORT 
+# Start the FastAPI application with proper Railway configuration
+exec uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 
