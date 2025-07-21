@@ -8,4 +8,4 @@ cmds = ["pip install -r requirements-minimal.txt"]
 cmds = ["echo 'Build completed'"]
 
 [start]
-cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1" 
+cmd = "./railway_start.sh" 
